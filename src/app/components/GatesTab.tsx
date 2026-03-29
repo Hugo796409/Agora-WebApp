@@ -6,21 +6,79 @@ import { Badge } from "./ui/badge";
 import { 
   CheckCircle2, 
   Circle, 
-  ChevronDown, 
-  ChevronRight, 
-  BookOpen, 
-  Video, 
-  FileText,
   Lock,
   Unlock,
   GraduationCap,
-  AlertCircle
+  AlertCircle,
+  Rocket,
+  Star,
+  Sparkles,
+  Trophy,
+  Book,
+  ChevronLeft,
+  Video,
+  FileText
 } from "lucide-react";
 import { gatesData } from "../data/gatesData";
 import { getCourseContent } from "../data/courseData";
 import { CourseModal } from "./CourseModal";
 import { useProjects } from "./ProjectsContext";
 import { useGamification } from "./GamificationContext";
+import { motion } from "motion/react";
+
+// Planètes du système solaire pour chaque gate avec apparence réaliste
+const PLANET_DATA = [
+  { 
+    name: "Mercure", 
+    colors: { primary: "#8C7853", secondary: "#B5A393", surface: "#6B5D4F" },
+    description: "La planète de l'inspiration"
+  },
+  { 
+    name: "Vénus", 
+    colors: { primary: "#FFA500", secondary: "#FFD700", surface: "#FF8C00" },
+    description: "La planète de l'adéquation"
+  },
+  { 
+    name: "Mars", 
+    colors: { primary: "#CD5C5C", secondary: "#FF6B6B", surface: "#8B0000" },
+    description: "La planète de l'étude"
+  },
+  { 
+    name: "Jupiter", 
+    colors: { primary: "#DAA520", secondary: "#F0E68C", surface: "#B8860B" },
+    description: "La planète de la stratégie"
+  },
+  { 
+    name: "Saturne", 
+    colors: { primary: "#F4E4C1", secondary: "#E6D7B8", surface: "#D4C4A8" },
+    description: "La planète des finances"
+  },
+  { 
+    name: "Uranus", 
+    colors: { primary: "#4FD1C5", secondary: "#81E6D9", surface: "#319795" },
+    description: "La planète des aides"
+  },
+  { 
+    name: "Neptune", 
+    colors: { primary: "#4169E1", secondary: "#6495ED", surface: "#1E3A8A" },
+    description: "La planète juridique"
+  },
+  { 
+    name: "Pluton", 
+    colors: { primary: "#8B7D6B", secondary: "#A89F91", surface: "#6B5D4F" },
+    description: "La planète des démarches"
+  },
+  { 
+    name: "Titan", 
+    colors: { primary: "#FF6347", secondary: "#FF7F50", surface: "#DC143C" },
+    description: "La planète de l'installation"
+  },
+  { 
+    name: "Europa", 
+    colors: { primary: "#E0F2FE", secondary: "#BAE6FD", surface: "#7DD3FC" },
+    description: "La planète du démarrage"
+  },
+];
 
 interface GatesTabProps {
   projectId: string;
@@ -30,7 +88,7 @@ export function GatesTab({ projectId }: GatesTabProps) {
   const { getProjectById, updateProject } = useProjects();
   const { checkAndUnlockBadges } = useGamification();
   const project = getProjectById(projectId);
-  const [expandedSteps, setExpandedSteps] = useState<number[]>([0]);
+  const [selectedGate, setSelectedGate] = useState<number | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<{
     stepIndex: number;
     taskIndex: number;
@@ -52,18 +110,17 @@ export function GatesTab({ projectId }: GatesTabProps) {
   // Vérifier si toutes les gates sont complétées
   const allGatesCompleted = completedTasks === totalTasks;
 
+  // Calculer les gates complétés (un gate = toutes ses tâches terminées)
+  const completedGates = gatesData.steps.filter((step, stepIndex) => {
+    const stepTasks = gatesProgress[stepIndex] || {};
+    const completed = Object.values(stepTasks).filter(Boolean).length;
+    return completed === step.tasks.length;
+  }).length;
+
   // Compter combien de cours sont disponibles
   const totalCourses = gatesData.steps.reduce((total, step, stepIndex) => {
     return total + step.tasks.filter((_, taskIndex) => getCourseContent(stepIndex, taskIndex) !== null).length;
   }, 0);
-
-  const toggleStep = (stepIndex: number) => {
-    setExpandedSteps((prev) =>
-      prev.includes(stepIndex)
-        ? prev.filter((i) => i !== stepIndex)
-        : [...prev, stepIndex]
-    );
-  };
 
   const openCourse = (stepIndex: number, taskIndex: number) => {
     setSelectedCourse({ stepIndex, taskIndex });
@@ -101,7 +158,7 @@ export function GatesTab({ projectId }: GatesTabProps) {
     updateProject(projectId, { 
       deliverables: newDeliverables,
       gatesProgress: newProgress,
-      progress: newProgressPercentage // Mettre à jour la progression du projet
+      progress: newProgressPercentage
     });
 
     // Vérifier et débloquer les badges
@@ -118,225 +175,770 @@ export function GatesTab({ projectId }: GatesTabProps) {
       completed,
       total: step.tasks.length,
       percentage: step.tasks.length > 0 ? Math.round((completed / step.tasks.length) * 100) : 0,
+      isCompleted: completed === step.tasks.length,
     };
   };
 
-  return (
-    <div className="space-y-6">
-      {/* En-tête avec progression globale */}
-      <Card className="p-6 bg-gradient-to-r from-orange-50 to-blue-50 border-2 border-[#4D80C6]">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-xl mb-2 bg-gradient-to-r from-[#FC4C00] to-[#004AAD] bg-clip-text text-transparent">
-              Progression des Gates
-            </h3>
-            <p className="text-sm text-gray-700">
-              Complète toutes les étapes pour débloquer la certification jury
-            </p>
+  // Déterminer la prochaine tâche disponible dans un gate
+  const getNextAvailableTask = (stepIndex: number) => {
+    const stepTasks = gatesProgress[stepIndex] || {};
+    const tasks = gatesData.steps[stepIndex].tasks;
+    
+    for (let i = 0; i < tasks.length; i++) {
+      if (!stepTasks[i]) {
+        return i; // Première tâche non complétée
+      }
+    }
+    return tasks.length; // Toutes complétées
+  };
+
+  // Vérifier si une planète est découverte (visible)
+  const isPlanetDiscovered = (stepIndex: number) => {
+    if (stepIndex === 0) return true; // Premier gate toujours visible
+    const previousStepProgress = getStepProgress(stepIndex - 1);
+    return previousStepProgress.isCompleted || stepIndex <= completedGates;
+  };
+
+  // Vérifier si un gate est accessible (on peut cliquer dessus)
+  const isGateAccessible = (stepIndex: number) => {
+    if (stepIndex === 0) return true;
+    const previousStepProgress = getStepProgress(stepIndex - 1);
+    return previousStepProgress.isCompleted;
+  };
+
+  // Vue de la carte (parcours des planètes)
+  if (selectedGate === null) {
+    return (
+      <div className="space-y-6">
+        {/* En-tête avec progression globale */}
+        <Card className="p-6 bg-gradient-to-r from-orange-50 to-blue-50 border-2 border-[#4D80C6]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex-1">
+              <h3 className="text-xl mb-2 bg-gradient-to-r from-[#FC4C00] to-[#004AAD] bg-clip-text text-transparent">
+                Voyage Spatial des Gates
+              </h3>
+              <p className="text-sm text-gray-700">
+                Explore les planètes et complète toutes les missions pour débloquer la certification
+              </p>
+            </div>
+            {allGatesCompleted ? (
+              <Badge className="bg-green-100 text-green-800 border-green-300">
+                <Trophy className="w-3 h-3 mr-1" />
+                Voyage Complété
+              </Badge>
+            ) : (
+              <Badge className="bg-orange-100 text-orange-800 border-orange-300">
+                <Rocket className="w-3 h-3 mr-1" />
+                En cours
+              </Badge>
+            )}
           </div>
-          {allGatesCompleted ? (
-            <Badge className="bg-green-100 text-green-800 border-green-300">
-              <Unlock className="w-3 h-3 mr-1" />
-              Débloqué
-            </Badge>
-          ) : (
-            <Badge className="bg-orange-100 text-orange-800 border-orange-300">
-              <Lock className="w-3 h-3 mr-1" />
-              Verrouillé
-            </Badge>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Progression du voyage</span>
+              <span className="text-[#004AAD] font-bold">
+                {completedGates}/10 Planètes explorées
+              </span>
+            </div>
+            <Progress value={(completedGates / 10) * 100} className="h-3" />
+          </div>
+        </Card>
+
+        {/* Alerte pédagogique */}
+        <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300">
+          <div className="flex items-start gap-3">
+            <GraduationCap className="w-6 h-6 text-purple-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="font-semibold text-purple-900">Mode exploration activé</h4>
+                <Badge className="bg-purple-200 text-purple-900 border-purple-400">
+                  {totalCourses} cours disponibles
+                </Badge>
+              </div>
+              <p className="text-sm text-purple-800">
+                Découvre chaque planète en complétant ses missions. Chaque mission contient un cours et nécessite un livrable.
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Parcours des planètes */}
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-8">
+          {/* Étoiles de fond */}
+          <div className="absolute inset-0 opacity-30">
+            {[...Array(50)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  opacity: [0.2, 1, 0.2],
+                }}
+                transition={{
+                  duration: Math.random() * 3 + 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 2,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Ligne de connexion verticale */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/20 -translate-x-1/2 hidden md:block" />
+
+          {/* Terre (point de départ) */}
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="relative z-10 mb-16 flex justify-center"
+          >
+            <div className="text-center">
+              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 via-green-500 to-blue-600 shadow-2xl mx-auto mb-3 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/10 to-transparent" />
+                <div className="absolute top-8 left-6 w-16 h-16 rounded-full bg-green-700/40 blur-sm" />
+                <div className="absolute bottom-6 right-8 w-20 h-20 rounded-full bg-blue-700/40 blur-sm" />
+                <div className="absolute top-12 right-10 w-12 h-12 rounded-full bg-white/20" />
+              </div>
+              <p className="text-white font-bold text-lg">🌍 Terre</p>
+              <p className="text-white/70 text-sm">Point de départ</p>
+            </div>
+          </motion.div>
+
+          {/* Fusée animée */}
+          {completedGates < 10 && (
+            <motion.div
+              initial={{ y: 0 }}
+              animate={{ y: completedGates * 280 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="absolute left-1/2 top-32 -translate-x-1/2 z-30 pointer-events-none"
+            >
+              <motion.div
+                animate={{
+                  rotate: [0, -8, 8, -8, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <Rocket className="w-12 h-12 text-yellow-400 drop-shadow-2xl" />
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Planètes */}
+          <div className="space-y-12">
+            {PLANET_DATA.map((planet, stepIndex) => {
+              const isDiscovered = isPlanetDiscovered(stepIndex);
+              const isAccessible = isGateAccessible(stepIndex);
+              const stepProgress = getStepProgress(stepIndex);
+              const isEven = stepIndex % 2 === 0;
+
+              if (!isDiscovered) return null; // Ne pas afficher les planètes non découvertes
+
+              return (
+                <motion.div
+                  key={stepIndex}
+                  initial={{ opacity: 0, x: isEven ? -100 : 100 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: stepIndex * 0.1, duration: 0.5 }}
+                  className={`relative flex items-center gap-8 ${
+                    isEven ? "md:flex-row" : "md:flex-row-reverse"
+                  }`}
+                >
+                  {/* Planète réaliste */}
+                  <div className="flex-shrink-0 relative z-10">
+                    <motion.button
+                      onClick={() => isAccessible && setSelectedGate(stepIndex)}
+                      disabled={!isAccessible}
+                      whileHover={isAccessible ? { scale: 1.1 } : {}}
+                      whileTap={isAccessible ? { scale: 0.95 } : {}}
+                      className={`w-28 h-28 rounded-full shadow-2xl relative overflow-hidden transition-all ${
+                        !isAccessible ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                      style={{
+                        background: `radial-gradient(circle at 30% 30%, ${planet.colors.secondary}, ${planet.colors.primary} 60%, ${planet.colors.surface})`,
+                      }}
+                    >
+                      {/* Cratères et textures */}
+                      <div className="absolute inset-0">
+                        <div className="absolute top-4 left-6 w-6 h-6 rounded-full bg-black/20 blur-sm" />
+                        <div className="absolute top-12 right-8 w-8 h-8 rounded-full bg-black/15 blur-sm" />
+                        <div className="absolute bottom-8 left-10 w-5 h-5 rounded-full bg-black/20 blur-sm" />
+                        <div className="absolute bottom-6 right-6 w-10 h-10 rounded-full bg-black/10 blur-sm" />
+                      </div>
+
+                      {/* Reflet lumineux */}
+                      <div className="absolute top-2 left-2 w-16 h-16 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-md" />
+
+                      {/* Anneau pour Saturne */}
+                      {planet.name === "Saturne" && (
+                        <div 
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-12 border-4 rounded-full"
+                          style={{
+                            borderColor: `${planet.colors.secondary}80`,
+                            transform: "translate(-50%, -50%) rotateX(75deg)",
+                          }}
+                        />
+                      )}
+
+                      {/* Statut */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {!isAccessible ? (
+                          <Lock className="w-10 h-10 text-white drop-shadow-lg" />
+                        ) : stepProgress.isCompleted ? (
+                          <CheckCircle2 className="w-12 h-12 text-green-400 drop-shadow-lg" />
+                        ) : (
+                          <span className="text-2xl font-bold text-white drop-shadow-lg">
+                            {stepIndex + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Anneau de progression */}
+                      {stepProgress.completed > 0 && !stepProgress.isCompleted && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            border: "4px solid",
+                            borderColor: "transparent",
+                            borderTopColor: "#FFD700",
+                            borderRightColor: "#FFD700",
+                          }}
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                        />
+                      )}
+
+                      {/* Anneau vert si complété */}
+                      {stepProgress.isCompleted && (
+                        <div className="absolute inset-0 rounded-full ring-4 ring-green-400 ring-offset-2 ring-offset-transparent" />
+                      )}
+                    </motion.button>
+                  </div>
+
+                  {/* Carte info planète */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    className="flex-1"
+                  >
+                    <Card className="bg-white/95 backdrop-blur p-5 shadow-xl border-2"
+                      style={{ borderColor: planet.colors.primary }}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-xl mb-1" style={{ color: planet.colors.primary }}>
+                            {planet.name}
+                          </h3>
+                          <p className="text-sm text-gray-600 italic mb-2">{planet.description}</p>
+                          <p className="text-sm font-medium text-gray-700">{gatesData.steps[stepIndex].title}</p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          style={{
+                            borderColor: planet.colors.primary,
+                            color: planet.colors.primary,
+                            backgroundColor: `${planet.colors.primary}20`,
+                          }}
+                        >
+                          {stepProgress.completed}/{stepProgress.total}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2 mb-3">
+                        <Progress
+                          value={stepProgress.percentage}
+                          className="h-2"
+                          style={{
+                            backgroundColor: `${planet.colors.primary}30`,
+                          }}
+                        />
+                        <p className="text-xs text-gray-600">
+                          {stepProgress.percentage}% des missions complétées
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={() => setSelectedGate(stepIndex)}
+                        disabled={!isAccessible}
+                        className="w-full"
+                        style={{
+                          backgroundColor: isAccessible ? planet.colors.primary : "#9CA3AF",
+                        }}
+                      >
+                        {!isAccessible ? (
+                          <>
+                            <Lock className="w-4 h-4 mr-2" />
+                            Planète verrouillée
+                          </>
+                        ) : stepProgress.isCompleted ? (
+                          <>
+                            <Star className="w-4 h-4 mr-2" />
+                            Revoir les missions
+                          </>
+                        ) : (
+                          <>
+                            <Book className="w-4 h-4 mr-2" />
+                            Explorer ({stepProgress.completed}/{stepProgress.total})
+                          </>
+                        )}
+                      </Button>
+                    </Card>
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Univers final */}
+          {allGatesCompleted && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 1, duration: 0.8 }}
+              className="relative z-10 mt-16 flex justify-center"
+            >
+              <div className="text-center">
+                <motion.div
+                  animate={{
+                    rotate: 360,
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+                    scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                  }}
+                  className="w-40 h-40 rounded-full bg-gradient-to-br from-yellow-300 via-purple-500 to-pink-500 shadow-2xl mx-auto mb-4 relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent" />
+                  <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 text-white" />
+                </motion.div>
+                <p className="text-white font-bold text-3xl mb-2">
+                  ✨ Voyage Complété ! ✨
+                </p>
+                <p className="text-white/90 text-lg">L'univers t'appartient</p>
+              </div>
+            </motion.div>
           )}
         </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium">Progression globale</span>
-            <span className="text-[#004AAD] font-bold">
-              {completedTasks} / {totalTasks} tâches
-            </span>
-          </div>
-          <Progress value={overallProgress} className="h-3" />
-          <p className="text-xs text-gray-600">
-            {overallProgress}% complété
-          </p>
-        </div>
-      </Card>
+        {/* Message final */}
+        {allGatesCompleted && (
+          <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300">
+            <div className="text-center">
+              <Trophy className="w-16 h-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-green-900 mb-2">
+                🎉 Toutes les planètes explorées !
+              </h3>
+              <p className="text-green-700 mb-4">
+                Tu peux maintenant soumettre ton projet à la certification jury
+              </p>
+              <Button 
+                onClick={() => window.location.href = `/payment/${projectId}`}
+                className="bg-gradient-to-r from-[#FC4C00] to-[#004AAD] hover:from-[#FD824D] hover:to-[#4D80C6]"
+              >
+                <Unlock className="w-4 h-4 mr-2" />
+                Accéder à la certification
+              </Button>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  }
 
-      {/* Alerte pédagogique */}
-      <Card className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300">
-        <div className="flex items-start gap-3">
-          <GraduationCap className="w-6 h-6 text-purple-600 flex-shrink-0 mt-0.5" />
+  // Vue détaillée d'un gate (parcours des tâches style Duolingo)
+  const currentPlanet = PLANET_DATA[selectedGate];
+  const currentStep = gatesData.steps[selectedGate];
+  const currentStepProgress = getStepProgress(selectedGate);
+  const nextAvailableTaskIndex = getNextAvailableTask(selectedGate);
+
+  return (
+    <div className="space-y-6">
+      {/* Retour et info planète */}
+      <Card className="p-6 border-2" style={{ borderColor: currentPlanet.colors.primary }}>
+        <div className="flex items-start gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSelectedGate(null)}
+            className="flex-shrink-0"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            Retour
+          </Button>
+          
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-1">
-              <h4 className="font-semibold text-purple-900">Mode pédagogique activé</h4>
-              <Badge className="bg-purple-200 text-purple-900 border-purple-400">
-                {totalCourses} cours disponibles
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-2xl font-bold" style={{ color: currentPlanet.colors.primary }}>
+                {currentPlanet.name}
+              </h2>
+              <Badge
+                variant="outline"
+                style={{
+                  borderColor: currentPlanet.colors.primary,
+                  color: currentPlanet.colors.primary,
+                  backgroundColor: `${currentPlanet.colors.primary}20`,
+                }}
+              >
+                Gate {selectedGate + 1}
               </Badge>
             </div>
-            <p className="text-sm text-purple-800">
-              Chaque tâche contient un cours avec vidéo explicative et exercices pratiques. 
-              Tu dois soumettre un livrable pour valider chaque étape et débloquer la certification.
-            </p>
+            <p className="text-gray-600 italic mb-1">{currentPlanet.description}</p>
+            <p className="text-gray-700 font-medium">{currentStep.title}</p>
           </div>
+
+          <div className="text-right">
+            <p className="text-2xl font-bold" style={{ color: currentPlanet.colors.primary }}>
+              {currentStepProgress.completed}/{currentStepProgress.total}
+            </p>
+            <p className="text-sm text-gray-600">Missions</p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <Progress
+            value={currentStepProgress.percentage}
+            className="h-3"
+            style={{
+              backgroundColor: `${currentPlanet.colors.primary}30`,
+            }}
+          />
         </div>
       </Card>
 
-      {/* Liste des étapes */}
-      <div className="space-y-4">
-        {gatesData.steps.map((step, stepIndex) => {
-          const stepProgress = getStepProgress(stepIndex);
-          const isExpanded = expandedSteps.includes(stepIndex);
-          const isCompleted = stepProgress.completed === stepProgress.total;
+      {/* Parcours des tâches style Duolingo */}
+      <div className="relative rounded-2xl overflow-hidden p-8"
+        style={{
+          background: `linear-gradient(180deg, #0A0E27 0%, #1a1f3a 50%, #0A0E27 100%)`,
+        }}
+      >
+        {/* Étoiles de fond animées */}
+        <div className="absolute inset-0 opacity-40">
+          {[...Array(100)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                scale: Math.random() * 0.5 + 0.5,
+              }}
+              animate={{
+                opacity: [0.1, 1, 0.1],
+              }}
+              transition={{
+                duration: Math.random() * 3 + 2,
+                repeat: Infinity,
+                delay: Math.random() * 2,
+              }}
+            />
+          ))}
+        </div>
 
-          return (
-            <Card key={stepIndex} className={`overflow-hidden transition-all ${isCompleted ? 'border-green-300 bg-green-50/30' : ''}`}>
-              {/* En-tête de l'étape */}
-              <button
-                onClick={() => toggleStep(stepIndex)}
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    isCompleted 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {stepIndex + 1}
-                  </div>
-                  <div className="text-left flex-1">
-                    <h4 className="font-medium text-gray-900">{step.title}</h4>
-                    <p className="text-xs text-gray-600">
-                      {stepProgress.completed} / {stepProgress.total} tâches
-                    </p>
-                  </div>
-                </div>
+        {/* Nébuleuses colorées */}
+        <div className="absolute inset-0 opacity-20">
+          <div 
+            className="absolute top-10 left-10 w-64 h-64 rounded-full blur-3xl"
+            style={{
+              background: `radial-gradient(circle, ${currentPlanet.colors.primary}40, transparent)`,
+            }}
+          />
+          <div 
+            className="absolute bottom-20 right-20 w-80 h-80 rounded-full blur-3xl"
+            style={{
+              background: `radial-gradient(circle, ${currentPlanet.colors.secondary}40, transparent)`,
+            }}
+          />
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl"
+            style={{
+              background: `radial-gradient(circle, #4169E140, transparent)`,
+            }}
+          />
+        </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right mr-2">
-                    <div className="text-sm font-medium text-[#004AAD]">
-                      {stepProgress.percentage}%
+        {/* Étoiles filantes occasionnelles */}
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={`shooting-${i}`}
+            className="absolute w-1 h-1 bg-white rounded-full"
+            style={{
+              left: `${Math.random() * 50}%`,
+              top: `${Math.random() * 50}%`,
+            }}
+            animate={{
+              x: [0, 200],
+              y: [0, 200],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              delay: i * 5 + Math.random() * 3,
+              repeatDelay: 8,
+            }}
+          >
+            <div className="absolute w-20 h-0.5 bg-gradient-to-r from-white to-transparent blur-sm" />
+          </motion.div>
+        ))}
+
+        {/* Chemin sinueux des tâches */}
+        <div className="max-w-md mx-auto relative z-10">
+          {currentStep.tasks.map((task, taskIndex) => {
+            const isCompleted = gatesProgress[selectedGate]?.[taskIndex] || false;
+            const isAvailable = taskIndex === nextAvailableTaskIndex;
+            const isLocked = taskIndex > nextAvailableTaskIndex;
+            const hasCourse = getCourseContent(selectedGate, taskIndex) !== null;
+
+            return (
+              <div key={taskIndex}>
+                {/* Bouton de tâche */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: taskIndex * 0.1 }}
+                  className="relative flex justify-center mb-6"
+                >
+                  <motion.button
+                    onClick={() => hasCourse && !isLocked && openCourse(selectedGate, taskIndex)}
+                    disabled={isLocked || !hasCourse}
+                    whileHover={!isLocked && hasCourse ? { scale: 1.1 } : {}}
+                    whileTap={!isLocked && hasCourse ? { scale: 0.95 } : {}}
+                    className={`relative z-10 w-32 h-32 rounded-full shadow-2xl transition-all ${
+                      isLocked || !hasCourse ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    }`}
+                    style={{
+                      background: isCompleted
+                        ? `linear-gradient(135deg, ${currentPlanet.colors.primary}, ${currentPlanet.colors.secondary})`
+                        : isAvailable
+                        ? `linear-gradient(135deg, #FFD700, #FFA500)`
+                        : "linear-gradient(135deg, #374151, #4B5563)",
+                      boxShadow: isCompleted 
+                        ? `0 0 30px ${currentPlanet.colors.primary}80`
+                        : isAvailable
+                        ? "0 0 30px #FFD70080"
+                        : "0 4px 20px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {/* Effet de lueur interne */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/20 to-transparent" />
+
+                    {/* Contenu du bouton */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      {isCompleted ? (
+                        <>
+                          <CheckCircle2 className="w-12 h-12 text-white drop-shadow-lg mb-1" />
+                          <span className="text-xs font-bold text-white drop-shadow-lg">
+                            Mission {taskIndex + 1}
+                          </span>
+                        </>
+                      ) : isLocked ? (
+                        <>
+                          <Lock className="w-10 h-10 text-gray-300 drop-shadow-lg mb-1" />
+                          <span className="text-xs font-bold text-gray-300 drop-shadow-lg">
+                            Mission {taskIndex + 1}
+                          </span>
+                        </>
+                      ) : !hasCourse ? (
+                        <>
+                          <AlertCircle className="w-10 h-10 text-gray-300 drop-shadow-lg mb-1" />
+                          <span className="text-xs font-bold text-gray-300 drop-shadow-lg">
+                            Mission {taskIndex + 1}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Book className="w-10 h-10 text-white drop-shadow-lg mb-1" />
+                          <span className="text-xs font-bold text-white drop-shadow-lg">
+                            Mission {taskIndex + 1}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Animation pulsante pour la tâche disponible */}
+                    {isAvailable && hasCourse && (
+                      <>
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-4 border-yellow-400"
+                          animate={{
+                            scale: [1, 1.3, 1],
+                            opacity: [0.8, 0, 0.8],
+                          }}
+                          transition={{
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                        />
+                        <motion.div
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            boxShadow: "0 0 40px #FFD700",
+                          }}
+                          animate={{
+                            opacity: [0.5, 1, 0.5],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                          }}
+                        />
+                      </>
+                    )}
+
+                    {/* Étoiles pour les tâches complétées */}
+                    {isCompleted && (
+                      <>
+                        <motion.div
+                          animate={{
+                            rotate: [0, 360],
+                            scale: [1, 1.2, 1],
+                          }}
+                          transition={{
+                            duration: 3,
+                            repeat: Infinity,
+                          }}
+                        >
+                          <Star
+                            className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 fill-yellow-400 drop-shadow-lg"
+                          />
+                        </motion.div>
+                        <motion.div
+                          animate={{
+                            rotate: [0, -360],
+                            scale: [1, 1.1, 1],
+                          }}
+                          transition={{
+                            duration: 2.5,
+                            repeat: Infinity,
+                          }}
+                        >
+                          <Star
+                            className="absolute -top-2 -left-2 w-5 h-5 text-yellow-300 fill-yellow-300 drop-shadow-lg"
+                          />
+                        </motion.div>
+                        <motion.div
+                          animate={{
+                            rotate: [0, 360],
+                            scale: [1, 1.15, 1],
+                          }}
+                          transition={{
+                            duration: 2.8,
+                            repeat: Infinity,
+                          }}
+                        >
+                          <Star
+                            className="absolute -bottom-2 -right-1 w-5 h-5 text-yellow-300 fill-yellow-300 drop-shadow-lg"
+                          />
+                        </motion.div>
+                      </>
+                    )}
+                  </motion.button>
+                </motion.div>
+
+                {/* Chemin avec petites fusées entre les tâches */}
+                {taskIndex < currentStep.tasks.length - 1 && (
+                  <div className="relative flex flex-col items-center mb-6">
+                    {/* Ligne pointillée verticale */}
+                    <div 
+                      className="w-1 h-16 relative"
+                      style={{
+                        background: isCompleted 
+                          ? `repeating-linear-gradient(to bottom, ${currentPlanet.colors.primary} 0px, ${currentPlanet.colors.primary} 8px, transparent 8px, transparent 16px)`
+                          : "repeating-linear-gradient(to bottom, #4B5563 0px, #4B5563 8px, transparent 8px, transparent 16px)",
+                      }}
+                    >
+                      {/* Petites fusées sur le chemin */}
+                      <motion.div
+                        className="absolute left-1/2 top-1/4 -translate-x-1/2"
+                        animate={{
+                          y: [0, -3, 0],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      >
+                        <Rocket 
+                          className="w-4 h-4 rotate-180"
+                          style={{
+                            color: isCompleted ? currentPlanet.colors.primary : "#6B7280",
+                            filter: "drop-shadow(0 0 4px rgba(255,255,255,0.5))",
+                          }}
+                        />
+                      </motion.div>
+                      
+                      <motion.div
+                        className="absolute left-1/2 top-3/4 -translate-x-1/2"
+                        animate={{
+                          y: [0, -3, 0],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.5,
+                        }}
+                      >
+                        <Rocket 
+                          className="w-4 h-4 rotate-180"
+                          style={{
+                            color: isCompleted ? currentPlanet.colors.primary : "#6B7280",
+                            filter: "drop-shadow(0 0 4px rgba(255,255,255,0.5))",
+                          }}
+                        />
+                      </motion.div>
                     </div>
                   </div>
-                  {isExpanded ? (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  )}
-                </div>
-              </button>
+                )}
+              </div>
+            );
+          })}
 
-              {/* Contenu de l'étape */}
-              {isExpanded && (
-                <div className="border-t bg-white">
-                  <div className="p-4 space-y-3">
-                    {step.tasks.map((task, taskIndex) => {
-                      const isTaskCompleted = gatesProgress[stepIndex]?.[taskIndex] || false;
-                      const hasCourse = getCourseContent(stepIndex, taskIndex) !== null;
-                      const hasDeliverable = deliverables[stepIndex]?.[taskIndex];
-
-                      return (
-                        <div
-                          key={taskIndex}
-                          className={`p-3 rounded-lg border transition-all ${
-                            isTaskCompleted
-                              ? 'bg-green-50 border-green-200'
-                              : 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              {isTaskCompleted ? (
-                                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-gray-400" />
-                              )}
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <p className={`text-sm flex-1 ${
-                                  isTaskCompleted ? 'text-gray-600' : 'text-gray-900'
-                                }`}>
-                                  {task.title}
-                                </p>
-                                
-                                {hasCourse && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => openCourse(stepIndex, taskIndex)}
-                                    className={`${
-                                      isTaskCompleted
-                                        ? 'bg-green-600 hover:bg-green-700'
-                                        : 'bg-gradient-to-r from-[#FC4C00] to-[#004AAD] hover:from-[#FD824D] hover:to-[#4D80C6]'
-                                    }`}
-                                  >
-                                    <GraduationCap className="w-4 h-4 mr-1" />
-                                    {isTaskCompleted ? 'Revoir' : 'Suivre le cours'}
-                                  </Button>
-                                )}
-                              </div>
-
-                              {/* Indicators */}
-                              <div className="flex flex-wrap gap-2">
-                                {hasCourse ? (
-                                  <>
-                                    <Badge variant="outline" className="text-xs bg-white">
-                                      <Video className="w-3 h-3 mr-1" />
-                                      Cours vidéo
-                                    </Badge>
-                                    <Badge variant="outline" className="text-xs bg-white">
-                                      <FileText className="w-3 h-3 mr-1" />
-                                      Livrable requis
-                                    </Badge>
-                                    {isTaskCompleted && (
-                                      <Badge className="text-xs bg-green-100 text-green-800 border-green-300">
-                                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Validé
-                                      </Badge>
-                                    )}
-                                  </>
-                                ) : (
-                                  <Badge variant="outline" className="text-xs bg-orange-50 border-orange-300 text-orange-700">
-                                    <AlertCircle className="w-3 h-3 mr-1" />
-                                    Cours en préparation
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Message de statut final */}
-      {allGatesCompleted && (
-        <Card className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-10 h-10 text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-green-900 mb-2">
-              🎉 Toutes les gates sont complétées !
-            </h3>
-            <p className="text-green-700 mb-4">
-              Tu peux maintenant soumettre ton projet à la certification jury
-            </p>
-            <Button 
-              onClick={() => window.location.href = `/payment/${projectId}`}
-              className="bg-gradient-to-r from-[#FC4C00] to-[#004AAD] hover:from-[#FD824D] hover:to-[#4D80C6]"
+          {/* Trésor / Récompense à la fin */}
+          {currentStepProgress.isCompleted && (
+            <motion.div
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.5, type: "spring" }}
+              className="flex justify-center mt-12"
             >
-              <Unlock className="w-4 h-4 mr-2" />
-              Accéder à la certification
-            </Button>
-          </div>
-        </Card>
-      )}
+              <div className="text-center">
+                <motion.div
+                  animate={{
+                    rotate: [0, 10, -10, 10, 0],
+                    scale: [1, 1.1, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                  }}
+                  className="w-32 h-32 mx-auto mb-4 relative"
+                >
+                  <Trophy className="w-full h-full text-yellow-500 drop-shadow-2xl" />
+                  <Sparkles className="absolute top-0 right-0 w-8 h-8 text-yellow-300" />
+                  <Sparkles className="absolute bottom-0 left-0 w-6 h-6 text-yellow-400" />
+                </motion.div>
+                <h3 className="text-2xl font-bold mb-2" style={{ color: currentPlanet.colors.primary }}>
+                  Planète explorée !
+                </h3>
+                <p className="text-gray-700">
+                  Toutes les missions de {currentPlanet.name} sont complétées
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
 
       {/* Course Modal */}
       {selectedCourse && (() => {
