@@ -25,6 +25,7 @@ import { CourseModal } from "./CourseModal";
 import { useProjects } from "./ProjectsContext";
 import { useGamification } from "./GamificationContext";
 import { motion } from "motion/react";
+import { RealisticPlanet } from "./RealisticPlanet";
 
 // Planètes du système solaire pour chaque gate avec apparence réaliste
 const PLANET_DATA = [
@@ -290,7 +291,7 @@ export function GatesTab({ projectId }: GatesTabProps) {
           {/* Ligne de connexion verticale */}
           <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/20 -translate-x-1/2 hidden md:block" />
 
-          {/* Terre (point de départ) */}
+          {/* Terre (point de départ) - Ultra-réaliste */}
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -298,11 +299,96 @@ export function GatesTab({ projectId }: GatesTabProps) {
             className="relative z-10 mb-16 flex justify-center"
           >
             <div className="text-center">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 via-green-500 to-blue-600 shadow-2xl mx-auto mb-3 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/10 to-transparent" />
-                <div className="absolute top-8 left-6 w-16 h-16 rounded-full bg-green-700/40 blur-sm" />
-                <div className="absolute bottom-6 right-8 w-20 h-20 rounded-full bg-blue-700/40 blur-sm" />
-                <div className="absolute top-12 right-10 w-12 h-12 rounded-full bg-white/20" />
+              <div className="relative w-40 h-40 mx-auto mb-3">
+                <div className="w-40 h-40 rounded-full shadow-2xl relative overflow-hidden"
+                  style={{
+                    background: "radial-gradient(circle at 30% 30%, #87CEEB, #1E90FF 50%, #000080 85%, #000000)",
+                    boxShadow: "0 12px 40px rgba(30, 144, 255, 0.5), inset -12px -12px 30px rgba(0,0,0,0.8), inset 6px 6px 20px rgba(135, 206, 235, 0.3)",
+                  }}
+                >
+                  {/* Rotation lente de la Terre */}
+                  <motion.div
+                    className="absolute inset-0"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 150, repeat: Infinity, ease: "linear" }}
+                  >
+                    {/* Continents (Amérique) */}
+                    <div className="absolute top-8 left-6 w-12 h-20 bg-green-700/70 blur-[1px]" 
+                      style={{ borderRadius: "60% 40% 50% 50% / 50% 60% 40% 50%" }} 
+                    />
+                    <div className="absolute top-10 left-8 w-8 h-16 bg-green-800/60 blur-[1px]" 
+                      style={{ borderRadius: "50% 50% 60% 40% / 60% 50% 50% 40%" }} 
+                    />
+                    
+                    {/* Continents (Afrique/Europe) */}
+                    <div className="absolute top-6 right-10 w-14 h-16 bg-green-700/70 blur-[1px]" 
+                      style={{ borderRadius: "40% 60% 50% 50% / 50% 50% 60% 40%" }} 
+                    />
+                    <div className="absolute top-4 right-8 w-10 h-10 bg-green-800/60 blur-[1px]" 
+                      style={{ borderRadius: "50% 50% 40% 60%" }} 
+                    />
+
+                    {/* Continents (Asie) */}
+                    <div className="absolute top-12 right-4 w-16 h-14 bg-green-700/70 blur-[1px]" 
+                      style={{ borderRadius: "50% 60% 40% 50% / 60% 40% 50% 50%" }} 
+                    />
+
+                    {/* Océans avec reflets */}
+                    <div className="absolute top-14 left-14 w-18 h-18 bg-blue-600/30 rounded-full blur-md" />
+                    <div className="absolute top-20 right-16 w-20 h-20 bg-blue-700/25 rounded-full blur-md" />
+
+                    {/* Calottes glaciaires */}
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-white/90 blur-sm" />
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-white/85 blur-sm" />
+
+                    {/* Nuages animés */}
+                    <motion.div 
+                      className="absolute top-8 left-12 w-16 h-8 rounded-full bg-white/40 blur-md"
+                      animate={{ x: [0, 10, 0], opacity: [0.4, 0.6, 0.4] }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <motion.div 
+                      className="absolute top-18 right-14 w-14 h-6 rounded-full bg-white/35 blur-md"
+                      animate={{ x: [0, -8, 0], opacity: [0.35, 0.55, 0.35] }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                    />
+                    <motion.div 
+                      className="absolute bottom-12 left-16 w-18 h-10 rounded-full bg-white/40 blur-lg"
+                      animate={{ x: [0, 12, 0], opacity: [0.4, 0.6, 0.4] }}
+                      transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+                    />
+                  </motion.div>
+
+                  {/* Reflet lumineux ultra-réaliste du soleil */}
+                  <div className="absolute top-4 left-4 w-24 h-24 rounded-full bg-gradient-to-br from-white/70 via-white/40 to-transparent blur-xl" />
+                  <div className="absolute top-3 left-3 w-16 h-16 rounded-full bg-white/50 blur-lg" />
+                  <div className="absolute top-2 left-2 w-10 h-10 rounded-full bg-white/30 blur-md" />
+
+                  {/* Ombre du terminateur (transition jour/nuit) */}
+                  <div className="absolute inset-0 bg-gradient-to-l from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/30" />
+
+                  {/* Atmosphère bleue lumineuse */}
+                  <div 
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      boxShadow: "inset 0 0 25px rgba(135, 206, 235, 0.4), 0 0 50px rgba(30, 144, 255, 0.3)",
+                    }}
+                  />
+                </div>
+
+                {/* Lueur orbitale bleue pulsante */}
+                <motion.div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  animate={{
+                    boxShadow: [
+                      "0 0 40px rgba(30, 144, 255, 0.4)",
+                      "0 0 60px rgba(30, 144, 255, 0.6)",
+                      "0 0 40px rgba(30, 144, 255, 0.4)",
+                    ]
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
               </div>
               <p className="text-white font-bold text-lg">🌍 Terre</p>
               <p className="text-white/70 text-sm">Point de départ</p>
@@ -352,76 +438,14 @@ export function GatesTab({ projectId }: GatesTabProps) {
                     isEven ? "md:flex-row" : "md:flex-row-reverse"
                   }`}
                 >
-                  {/* Planète réaliste */}
-                  <div className="flex-shrink-0 relative z-10">
-                    <motion.button
-                      onClick={() => isAccessible && setSelectedGate(stepIndex)}
-                      disabled={!isAccessible}
-                      whileHover={isAccessible ? { scale: 1.1 } : {}}
-                      whileTap={isAccessible ? { scale: 0.95 } : {}}
-                      className={`w-28 h-28 rounded-full shadow-2xl relative overflow-hidden transition-all ${
-                        !isAccessible ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                      }`}
-                      style={{
-                        background: `radial-gradient(circle at 30% 30%, ${planet.colors.secondary}, ${planet.colors.primary} 60%, ${planet.colors.surface})`,
-                      }}
-                    >
-                      {/* Cratères et textures */}
-                      <div className="absolute inset-0">
-                        <div className="absolute top-4 left-6 w-6 h-6 rounded-full bg-black/20 blur-sm" />
-                        <div className="absolute top-12 right-8 w-8 h-8 rounded-full bg-black/15 blur-sm" />
-                        <div className="absolute bottom-8 left-10 w-5 h-5 rounded-full bg-black/20 blur-sm" />
-                        <div className="absolute bottom-6 right-6 w-10 h-10 rounded-full bg-black/10 blur-sm" />
-                      </div>
-
-                      {/* Reflet lumineux */}
-                      <div className="absolute top-2 left-2 w-16 h-16 rounded-full bg-gradient-to-br from-white/40 to-transparent blur-md" />
-
-                      {/* Anneau pour Saturne */}
-                      {planet.name === "Saturne" && (
-                        <div 
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-12 border-4 rounded-full"
-                          style={{
-                            borderColor: `${planet.colors.secondary}80`,
-                            transform: "translate(-50%, -50%) rotateX(75deg)",
-                          }}
-                        />
-                      )}
-
-                      {/* Statut */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        {!isAccessible ? (
-                          <Lock className="w-10 h-10 text-white drop-shadow-lg" />
-                        ) : stepProgress.isCompleted ? (
-                          <CheckCircle2 className="w-12 h-12 text-green-400 drop-shadow-lg" />
-                        ) : (
-                          <span className="text-2xl font-bold text-white drop-shadow-lg">
-                            {stepIndex + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Anneau de progression */}
-                      {stepProgress.completed > 0 && !stepProgress.isCompleted && (
-                        <motion.div
-                          className="absolute inset-0 rounded-full"
-                          style={{
-                            border: "4px solid",
-                            borderColor: "transparent",
-                            borderTopColor: "#FFD700",
-                            borderRightColor: "#FFD700",
-                          }}
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        />
-                      )}
-
-                      {/* Anneau vert si complété */}
-                      {stepProgress.isCompleted && (
-                        <div className="absolute inset-0 rounded-full ring-4 ring-green-400 ring-offset-2 ring-offset-transparent" />
-                      )}
-                    </motion.button>
-                  </div>
+                  {/* Planète réaliste ultra-détaillée */}
+                  <RealisticPlanet
+                    planet={planet}
+                    stepIndex={stepIndex}
+                    stepProgress={stepProgress}
+                    isAccessible={isAccessible}
+                    onClick={() => isAccessible && setSelectedGate(stepIndex)}
+                  />
 
                   {/* Carte info planète */}
                   <motion.div
