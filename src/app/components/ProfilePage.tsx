@@ -29,6 +29,46 @@ import { Badge } from "./ui/badge";
 import { toast } from "sonner";
 import { useGamification } from "./GamificationContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useEffect } from "react"
+import { supabase } from "../../lib/supabase"
+
+interface ProfileType {
+  first_name: string;
+  last_name: string;
+  age: number;
+}
+
+export default function Profile() {
+  const [profile, setProfile] = useState<ProfileType | null>(null)
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      setProfile(data)
+    }
+
+    loadProfile()
+  }, [])
+
+  if (!profile) return <div>Loading...</div>
+
+  return (
+    <div>
+      <h1>{profile.first_name}</h1>
+      <p>{profile.last_name}</p>
+      <p>{profile.age}</p>
+    </div>
+  )
+}
 
 export function ProfilePage() {
   const navigate = useNavigate();
